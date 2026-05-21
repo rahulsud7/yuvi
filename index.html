@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth bg-[#0a0a0a]">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yuvraj Rana — Photographic Archive</title>
+    
+    <!-- Tailwind CSS for visual structuring -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Silkscreen (8-bit style) & Inter (Modernist style) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        retro: ['"Silkscreen"', 'monospace'],
+                        sans: ['"Inter"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* ================= 1. MICRO-DOT BACKGROUND GRID ================= */
+        /* Exact radial dot texture from the reference image */
+        .dot-matrix-bg {
+            background-color: #0a0a0a;
+            background-image: radial-gradient(#1f1f1f 1.5px, transparent 1.5px);
+            background-size: 20px 20px;
+        }
+
+        /* Scanline CRT overlay */
+        .crt-scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 4px, 6px 100%;
+            z-index: 999;
+            pointer-events: none;
+            opacity: 0.2;
+        }
+
+        /* ================= 2. ISOMETRIC VIEWPORT CONTROLLER ================= */
+        /* Fixed viewport frame. pointer-events: none lets scroll events bubble down to the spacer */
+        #perspective-container {
+            perspective: 2500px;
+            overflow: hidden;
+            width: 100%;
+            height: 100vh;
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* Staggered Diagonal Workspace (Shifted down and right to keep the Hero section safe) */
+        #isometric-wrapper {
+            position: absolute;
+            left: calc(50% + 120px); 
+            top: 240px; /* Shifted down to prevent Hero header from going out of bounds */
+            width: 800px;
+            margin-left: -400px;
+            transform-style: preserve-3d;
+            transform-origin: 50% 0%;
+            will-change: transform;
+            pointer-events: auto; /* Restores button and form inputs */
+        }
+
+        @media (max-width: 1024px) {
+            #isometric-wrapper {
+                left: calc(50% + 60px);
+                width: 650px;
+                margin-left: -325px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            #isometric-wrapper {
+                left: 50%;
+                width: 90vw;
+                margin-left: -45vw;
+                top: 150px;
+            }
+        }
+
+        /* ================= 3. CONTINUOUS WALKING RETRO SPRITES ================= */
+        /* Animations structured to drift smoothly across local space */
+        @keyframes walk-right {
+            0% { transform: translateX(-350px); }
+            100% { transform: translateX(1300px); }
+        }
+        @keyframes walk-left {
+            0% { transform: translateX(1300px) scaleX(-1); }
+            100% { transform: translateX(-350px) scaleX(-1); }
+        }
+
+        .sprite-walk-right {
+            position: absolute;
+            animation: walk-right 22s linear infinite;
+            z-index: 50;
+        }
+        .sprite-walk-left {
+            position: absolute;
+            animation: walk-left 26s linear infinite;
+            z-index: 50;
+        }
+
+        /* ================= 4. REAL 3D ISOMETRIC CUBES ================= */
+        .cube-container {
+            position: absolute;
+            transform-style: preserve-3d;
+        }
+        .cube-3d {
+            width: 24px;
+            height: 24px;
+            transform-style: preserve-3d;
+            transform: rotateZ(45deg);
+        }
+        .cube-face {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border: 1px solid rgba(0, 0, 0, 0.15);
+        }
+        .face-top    { transform: rotateX(90deg) translateZ(12px); }
+        .face-front  { transform: rotateY(0deg) translateZ(12px); }
+        .face-right  { transform: rotateY(90deg) translateZ(12px); }
+
+        /* ================= 5. VERTICAL TYPOGRAPHY ================= */
+        .vertical-text-column {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            font-family: "Silkscreen", monospace;
+            line-height: 1.6;
+            letter-spacing: 0.2em;
+        }
+
+        /* ================= 6. CUSTOM RETICULE CURSOR ================= */
+        body.system-booted {
+            cursor: none;
+        }
+        body.system-booted a, 
+        body.system-booted button {
+            cursor: none;
+        }
+
+        @media (pointer: fine) {
+            .custom-cursor {
+                position: fixed;
+                width: 20px;
+                height: 20px;
+                border: 2px solid #ffde43;
+                pointer-events: none;
+                z-index: 100000; /* Overrides preloader screens */
+                transform: translate(-50%, -50%);
+                transition: width 0.15s, height 0.15s, border-color 0.15s, opacity 0.3s;
+                opacity: 0;
+            }
+            .custom-cursor::before {
+                content: '';
+                position: absolute;
+                top: 50%; left: 50%;
+                width: 4px; height: 4px;
+                background-color: #ff2e93;
+                transform: translate(-50%, -50%);
+            }
+            .hovering-link .custom-cursor {
+                width: 32px;
+                height: 32px;
+                border-color: #ff2e93;
+                background-color: rgba(255, 46, 147, 0.1);
+            }
+        }
+    </style>
+</head>
+<body class="text-white font-sans selection:bg-[#ffde43] selection:text-black antialiased relative">
+
+    <div class="crt-scanlines"></div>
+    <div id="cursor-element" class="custom-cursor hidden md:block"></div>
+
+    <!-- ================= SCROLL SPACER ================= -->
+    <!-- Native scroll height coordinator -->
+    <div id="scroll-spacer" class="absolute top-0 left-0 w-px pointer-events-none"></div>
+
+
+    <!-- ================= SYSTEM PRELOADER ================= -->
+    <div id="loader-screen" class="fixed inset-0 bg-[#080808] z-[99999] flex flex-col justify-between p-6 md:p-12 font-retro overflow-hidden">
+        <div class="flex justify-between items-start text-[10px] text-zinc-600">
+            <div>SYSTEM: Y-R96_BOOT_MATRIX</div>
+            <div>VER: 6.3 // CHANDIGARH</div>
+        </div>
+
+        <div class="max-w-2xl mx-auto w-full text-center space-y-8 my-auto">
+            <h1 class="text-xl md:text-3xl text-[#ffde43] tracking-wider animate-pulse uppercase">
+                Yuvraj Rana / Photography Engine
+            </h1>
+            
+            <div class="bg-black border border-zinc-800 p-4 text-left text-[9px] text-zinc-500 h-32 overflow-y-hidden space-y-1" id="terminal-log">
+                <div>&gt; PACKING DIAGONAL GRID UNITS (GAP: 650PX)...</div>
+            </div>
+
+            <div class="space-y-4">
+                <div class="w-full bg-zinc-900 h-4 border border-zinc-800 relative p-0.5">
+                    <div id="loader-progress" class="bg-[#ff2e93] h-full w-0 transition-all duration-100 ease-out"></div>
+                </div>
+                <div class="flex justify-between text-xs">
+                    <span class="text-zinc-600">STATUS: INITIALIZING SYSTEM SPRITES</span>
+                    <span id="loader-percent" class="text-[#ffde43]">00%</span>
+                </div>
+            </div>
+
+            <div class="pt-4">
+                <button id="boot-button" onclick="startSystem()" class="px-8 py-4 bg-[#ffde43] text-black hover:bg-[#ffe66b] font-retro text-xs tracking-widest uppercase transition-all hidden mx-auto border-2 border-black hover:border-white shadow-lg cursor-pointer">
+                    BOOT PHOTOGRAPHY SYSTEM_
+                </button>
+            </div>
+        </div>
+
+        <div class="flex justify-between items-end text-[9px] text-zinc-600">
+            <span>© 2026 YUVRAJ RANA • PORTFOLIO</span>
+            <span>想いをカタチに。カタチに遊びを。</span>
+        </div>
+    </div>
+
+
+    <!-- ================= LEFT STICKY HUD SIDEBAR NAVIGATION ================= -->
+    <div class="fixed left-6 top-6 z-50 flex flex-col gap-6 w-52 pointer-events-auto">
+        
+        <!-- Logo Section with exact double borders -->
+        <div class="bg-black/95 p-4 border-2 border-zinc-800 relative">
+            <div class="border border-zinc-700 p-2 text-center">
+                <span class="font-retro text-2xl tracking-tight text-white block">№96</span>
+            </div>
+            <div class="mt-3 font-retro text-[10px] text-zinc-400 leading-tight uppercase">
+                Yuvraj Rana<br/>
+                No.96<br/>
+                Photography Office
+            </div>
+        </div>
+
+        <!-- Scrollspy HUD Navigation -->
+        <nav class="font-retro text-[10px] flex flex-col gap-2 bg-black/95 p-4 border border-zinc-800/80">
+            <button onclick="scrollToSection(0)" class="nav-link text-left text-white flex items-center gap-2 hover:text-[#ffde43] transition-colors">
+                <span id="marker-0" class="text-[#ffde43]">■</span> Statement
+            </button>
+            <button onclick="scrollToSection(1)" class="nav-link text-left text-zinc-500 flex items-center gap-2 hover:text-white transition-colors">
+                <span id="marker-1" class="text-[#ffde43] opacity-0">■</span> Architecture
+            </button>
+            <button onclick="scrollToSection(2)" class="nav-link text-left text-zinc-500 flex items-center gap-2 hover:text-white transition-colors">
+                <span id="marker-2" class="text-[#ffde43] opacity-0">■</span> Street Plazas
+            </button>
+            <button onclick="scrollToSection(3)" class="nav-link text-left text-zinc-500 flex items-center gap-2 hover:text-white transition-colors">
+                <span id="marker-3" class="text-[#ffde43] opacity-0">■</span> Human Portraits
+            </button>
+            <button onclick="scrollToSection(4)" class="nav-link text-left text-zinc-500 flex items-center gap-2 hover:text-white transition-colors">
+                <span id="marker-4" class="text-[#ffde43] opacity-0">■</span> Shadow Studies
+            </button>
+            <button onclick="scrollToSection(5)" class="nav-link text-left text-zinc-500 flex items-center gap-2 hover:text-white transition-colors">
+                <span id="marker-5" class="text-[#ffde43] opacity-0">■</span> Night Grids
+            </button>
+            <button onclick="scrollToSection(6)" class="nav-link text-left text-zinc-500 flex items-center gap-2 hover:text-white transition-colors">
+                <span id="marker-6" class="text-[#ffde43] opacity-0">■</span> Connect
+            </button>
+        </nav>
+
+        <!-- Social Media Gateway (Muted Left Sidebar styling) -->
+        <div class="font-retro text-[9px] text-zinc-500 flex flex-col gap-1.5 bg-black/95 p-4 border border-zinc-800/80">
+            <a href="https://instagram.com" target="_blank" class="cursor-trigger hover:text-[#ffde43] transition-colors">INSTAGRAM ➔</a>
+            <a href="https://wa.me/919876543210" target="_blank" class="cursor-trigger hover:text-[#ffde43] transition-colors">WHATSAPP ➔</a>
+        </div>
+
+        <!-- View Display Interface State -->
+        <div class="font-retro text-[9px] text-zinc-500 flex flex-col gap-2 bg-black/95 p-4 border border-zinc-800/80">
+            <div class="flex items-center justify-between">
+                <span>VIEW:</span>
+                <span class="text-[#ffde43] flex items-center gap-1 font-bold">
+                    ⧉ <span class="text-zinc-600">➔</span> ⧠
+                </span>
+            </div>
+            
+            <!-- Sound System Interface -->
+            <div class="flex items-center justify-between mt-1">
+                <span>SOUND:</span>
+                <button onclick="toggleBGM()" id="sound-indicator" class="cursor-trigger flex items-center gap-1 text-zinc-400 hover:text-white">
+                    <span>OFF</span>
+                    <div class="w-2.5 h-2.5 bg-zinc-700 rounded-sm" id="sound-pixel"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ================= BOTTOM RIGHT FLOATING HUD PANEL ================= -->
+    <div class="fixed right-6 bottom-6 z-50 pointer-events-auto">
+        <div class="bg-[#242424] border border-zinc-700 shadow-2xl flex items-stretch overflow-hidden">
+            <div class="w-1.5 flex flex-col">
+                <div class="bg-[#ffde43] h-1/2"></div>
+                <div class="bg-[#3b82f6] h-1/2"></div>
+            </div>
+            <div class="px-5 py-4 flex items-center gap-6">
+                <div class="font-retro text-left">
+                    <span class="block text-[8px] text-zinc-400 tracking-widest">ARCHIVAL MATRIX</span>
+                    <span class="block text-[11px] text-white tracking-wider mt-0.5">EXPLORE PORTFOLIO SELECTS</span>
+                </div>
+                <div class="border-l border-dashed border-zinc-600 h-8"></div>
+                <button onclick="scrollToSection(1)" class="cursor-trigger text-white text-lg font-bold hover:translate-x-1 transition-transform">
+                    ➔
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ================= PERMANENT 3D DIAGONAL CANVAS CONTAINER ================= -->
+    <div id="perspective-container" class="dot-matrix-bg">
+        <div id="isometric-wrapper" class="transform-style-preserve-3d">
+
+            <!-- ================= DENSE WALKING RETRO SPRITES ================= -->
+            <!-- Populating horizontal tracks to animate along slanted isometric lines -->
+            
+            <!-- Track 1: Green Dinosaur T-Rex -->
+            <div class="sprite-walk-right" style="top: 150px; animation-duration: 21s;">
+                <svg class="w-10 h-10" viewBox="0 0 16 16" fill="none">
+                    <path d="M7 1h5v1h1v3h-1v1H9v1h3v1h1v1h-2v1H9v1h1v2H9v1H8v-1H7v-2H6v-1H5v-1H4v-1H3v-1H2V7h1V6h1V5h1V4h1V3h1V1z" fill="#22c55e"/>
+                    <path d="M9 3h1v1H9V3z" fill="#000"/>
+                </svg>
+            </div>
+
+            <!-- Track 2: White & Red Chicken -->
+            <div class="sprite-walk-left" style="top: 450px; animation-duration: 17s;">
+                <svg class="w-8 h-8" viewBox="0 0 16 16" fill="none">
+                    <path d="M6 3h4v1h2v3h-1v2H9v1H7v1H5v-1H4V7h1V5h1V3z" fill="#ffffff"/>
+                    <path d="M8 2h2v1H8V2z" fill="#ef4444"/>
+                    <path d="M11 4h1v1h-1V4z" fill="#facc15"/>
+                    <path d="M6 10h1v2H6v-2zm3 0h1v2H9v-2z" fill="#facc15"/>
+                </svg>
+            </div>
+
+            <!-- Track 3: Blue Dinosaur -->
+            <div class="sprite-walk-right" style="top: 850px; animation-duration: 25s;">
+                <svg class="w-10 h-10" viewBox="0 0 16 16" fill="none">
+                    <path d="M7 1h5v1h1v3h-1v1H9v1h3v1h1v1h-2v1H9v1h1v2H9v1H8v-1H7v-2H6v-1H5v-1H4v-1H3v-1H2V7h1V6h1V5h1V4h1V3h1V1z" fill="#3b82f6"/>
+                    <path d="M9 3h1v1H9V3z" fill="#ffffff"/>
+                </svg>
+            </div>
+
+            <!-- Track 4: Yellow Cab Taxi Car -->
+            <div class="sprite-walk-left" style="top: 1450px; animation-duration: 19s;">
+                <svg class="w-14 h-8" viewBox="0 0 24 12" fill="none">
+                    <path d="M4 4h14l3 3v3h-2v2h-2v-2H7v2H5v-2H3V7l1-3zm2 4h12V6H6v2z" fill="#facc15"/>
+                    <circle cx="6" cy="10" r="1.5" fill="#ffffff"/>
+                    <circle cx="17" cy="10" r="1.5" fill="#ffffff"/>
+                </svg>
+            </div>
+
+            <!-- Track 5: Pink/Red Fox Dog -->
+            <div class="sprite-walk-right" style="top: 2150px; animation-duration: 23s;">
+                <svg class="w-10 h-10" viewBox="0 0 16 16" fill="none">
+                    <path d="M3 5h2v2H3V5zm8 0h2v2h-2V5zM4 7h8v4H4V7zm2 4h1v2H6v-2zm3 0h1v2H9v-2z" fill="#ec4899"/>
+                </svg>
+            </div>
+
+            <!-- Track 6: White Chicken -->
+            <div class="sprite-walk-left" style="top: 2950px; animation-duration: 15s;">
+                <svg class="w-8 h-8" viewBox="0 0 16 16" fill="none">
+                    <path d="M6 3h4v1h2v3h-1v2H9v1H7v1H5v-1H4V7h1V5h1V3z" fill="#ffffff"/>
+                    <path d="M8 2h2v1H8V2z" fill="#ef4444"/>
+                    <path d="M11 4h1v1h-1V4z" fill="#facc15"/>
+                    <path d="M6 10h1v2H6v-2zm3 0h1v2H9v-2z" fill="#facc15"/>
+                </svg>
+            </div>
+
+            <!-- Track 7: Orange Fox -->
+            <div class="sprite-walk-right" style="top: 3600px; animation-duration: 22s;">
+                <svg class="w-10 h-10" viewBox="0 0 16 16" fill="none">
+                    <path d="M3 5h2v2H3V5zm8 0h2v2h-2V5zM4 7h8v4H4V7zm2 4h1v2H6v-2zm3 0h1v2H9v-2z" fill="#f97316"/>
+                </svg>
+            </div>
+
+
+            <!-- ================= DECORATIVE BACKGROUND CLOUDS & BIRDS ================= -->
+            <div class="absolute" style="top: -50px; left: -250px; opacity: 0.35;">
+                <svg class="w-20 h-10 text-zinc-700 animate-pulse" viewBox="0 0 16 8" fill="currentColor">
+                    <path d="M4 2h8v1h2v2h-1v1H3V5H2V3h2V2z"/>
+                </svg>
+            </div>
+            <div class="absolute" style="top: 1200px; right: -150px; opacity: 0.35;">
+                <svg class="w-24 h-12 text-zinc-700" viewBox="0 0 16 8" fill="currentColor">
+                    <path d="M4 2h8v1h2v2h-1v1H3V5H2V3h2V2z"/>
+                </svg>
+            </div>
+
+
+            <!-- ================= SCATTERED 3D ISOMETRIC CUBES ================= -->
+            <div class="cube-container" style="top: 100px; left: -150px;">
+                <div class="cube-3d"><div class="cube-face face-top bg-[#ff2e93]"></div><div class="cube-face face-front bg-[#cc1a6c]"></div><div class="cube-face face-right bg-[#990d4f]"></div></div>
+            </div>
+            <div class="cube-container" style="top: 450px; left: 850px;">
+                <div class="cube-3d"><div class="cube-face face-top bg-[#00e5ff]"></div><div class="cube-face face-front bg-[#00b3cc]"></div><div class="cube-face face-right bg-[#008099]"></div></div>
+            </div>
+            <div class="cube-container" style="top: 1100px; left: -200px;">
+                <div class="cube-3d"><div class="cube-face face-top bg-[#ffde43]"></div><div class="cube-face face-front bg-[#cca61a]"></div><div class="cube-face face-right bg-[#997a0d]"></div></div>
+            </div>
+            <div class="cube-container" style="top: 2400px; left: 1000px;">
+                <div class="cube-3d"><div class="cube-face face-top bg-[#4ade80]"></div><div class="cube-face face-front bg-[#34d399]"></div><div class="cube-face face-right bg-[#059669]"></div></div>
+            </div>
+
+
+            <!-- ================= THE MONUMENT OF THE RED SUN ================= -->
+            <div class="absolute transform-style-preserve-3d" style="top: -80px; right: 50px; transform: translateZ(60px);">
+                <div class="w-16 h-48 bg-zinc-800 border border-zinc-700 relative transform-style-preserve-3d shadow-2xl">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/95 to-transparent"></div>
+                    <div class="absolute -top-6 left-1/2 -ml-8 w-16 h-16 bg-red-600 rounded-full border-4 border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.7)] flex items-center justify-center">
+                        <span class="font-retro text-[8px] text-white">Y-R96</span>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- ================= SECTION 0: STATEMENT ================= -->
+            <!-- Stagger position: top: 0, left: 0. Contained within max-w-[500px] -->
+            <section class="absolute top-0 left-0 max-w-[500px] w-full min-h-[60vh] flex flex-col justify-center border-b border-zinc-800 pb-16 transform-style-preserve-3d z-10">
+                <div class="font-retro text-[10px] text-[#ff2e93] tracking-widest mb-4">SYS.00 // STATEMENT</div>
+                
+                <div class="absolute right-[-45%] top-[10%] flex gap-8 z-0 opacity-40 transform-style-preserve-3d">
+                    <div class="vertical-text-column text-4xl text-zinc-800">
+                        SHAPING <span class="text-[#ffde43]">LIGHT</span> AND <span class="text-[#ff2e93]">GRID</span>
+                    </div>
+                </div>
+
+                <div class="relative z-10">
+                    <h1 class="font-retro text-2xl md:text-4xl font-bold tracking-tight leading-none mb-8 uppercase">
+                        YUVRAJ RANA <br/>
+                        <span class="text-[#ffde43]">PHOTOGRAPHY</span><br/>
+                        <span class="text-zinc-600">ARCHIVES</span>
+                    </h1>
+                    <p class="font-sans text-zinc-400 text-sm md:text-base leading-relaxed border-l-4 border-[#ff2e93] pl-6 py-2">
+                        Operating from Chandigarh, India's modernist concrete grid. The portfolio is an active repository of spatial framing, street geometry, and portraiture textures.
+                    </p>
+                </div>
+            </section>
+
+
+            <!-- ================= SECTION 1: ARCHITECTURE ================= -->
+            <!-- Stagger position: top: 650px, left: 650px -->
+            <section class="absolute top-[650px] left-[650px] max-w-[500px] w-full border-b border-zinc-800 pb-16 transform-style-preserve-3d z-20">
+                <div class="flex justify-between items-end mb-8">
+                    <div>
+                        <div class="font-retro text-[10px] text-[#ff2e93] tracking-widest mb-2">CATALOGUE // CATEGORY 01</div>
+                        <h2 class="font-retro text-xl md:text-2xl text-white">BRUTALIST ARCHITECTURE</h2>
+                    </div>
+                    <span class="font-retro text-[8px] text-zinc-500 border border-zinc-800 px-2.5 py-1">ISO 100 - 200</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 transform-style-preserve-3d">
+                    <div class="group bg-zinc-950 border border-zinc-800 p-4 transition-all duration-300 hover:border-[#ffde43] hover:-translate-y-2 hover:shadow-[0_15px_30px_rgba(0,0,0,0.5)] transform-style-preserve-3d">
+                        <div class="overflow-hidden aspect-[4/3] bg-zinc-900 mb-4">
+                            <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=600" 
+                                 class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" alt="Concrete shadows">
+                        </div>
+                        <div class="flex justify-between font-retro text-[8px] text-zinc-500">
+                            <span>PLATE.AR_01</span>
+                            <span>HIGH COURT COMP.</span>
+                        </div>
+                    </div>
+                    <div class="group bg-zinc-950 border border-zinc-800 p-4 transition-all duration-300 hover:border-[#ffde43] hover:-translate-y-2 hover:shadow-[0_15px_30px_rgba(0,0,0,0.5)] transform-style-preserve-3d">
+                        <div class="overflow-hidden aspect-[4/3] bg-zinc-900 mb-4">
+                            <img src="https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=600" 
+                                 class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" alt="Concrete interior">
+                        </div>
+                        <div class="flex justify-between font-retro text-[8px] text-zinc-500">
+                            <span>PLATE.AR_02</span>
+                            <span>SECRETARIAT PLAZA</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- ================= SECTION 2: STREET PLAZAS ================= -->
+            <!-- Stagger position: top: 1300px, left: 1300px -->
+            <section class="absolute top-[1300px] left-[1300px] max-w-[500px] w-full border-b border-zinc-800 pb-16 transform-style-preserve-3d z-30">
+                <div class="flex justify-between items-end mb-8">
+                    <div>
+                        <div class="font-retro text-[10px] text-[#00e5ff] tracking-widest mb-2">CATALOGUE // CATEGORY 02</div>
+                        <h2 class="font-retro text-xl md:text-2xl text-white">STREET PLAZAS</h2>
+                    </div>
+                    <span class="font-retro text-[8px] text-zinc-500 border border-zinc-800 px-2.5 py-1">ISO 400 - 800</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 transform-style-preserve-3d">
+                    <div class="group bg-zinc-950 border border-zinc-800 p-4 transition-all duration-300 hover:border-[#00e5ff] hover:-translate-y-2 hover:shadow-[0_15px_30px_rgba(0,0,0,0.5)] transform-style-preserve-3d">
+                        <div class="overflow-hidden aspect-[4/3] bg-zinc-900 mb-4">
+                            <img src="https://images.unsplash.com/photo-1506461883276-594a12b11db3?auto=format&fit=crop&q=80&w=600" 
+                                 class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" alt="Street view">
+                        </div>
+                        <div class="flex justify-between font-retro text-[8px] text-zinc-500">
+                            <span>PLATE.ST_01</span>
+                            <span>SECTOR 17 PLAZA</span>
+                        </div>
+                    </div>
+                    <div class="group bg-zinc-950 border border-zinc-800 p-4 transition-all duration-300 hover:border-[#00e5ff] hover:-translate-y-2 hover:shadow-[0_15px_30px_rgba(0,0,0,0.5)] transform-style-preserve-3d">
+                        <div class="overflow-hidden aspect-[4/3] bg-zinc-900 mb-4">
+                            <img src="https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&q=80&w=600" 
+                                 class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" alt="Sukhna view">
+                        </div>
+                        <div class="flex justify-between font-retro text-[8px] text-zinc-500">
+                            <span>PLATE.ST_02</span>
+                            <span>SUKHNA LAKE</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- ================= SECTION 3: HUMAN PORTRAITS ================= -->
+            <!-- Stagger position: top: 1950px, left: 1950px -->
+            <section class="absolute top-[1950px] left-[1950px] max-w-[500px] w-full border-b border-zinc-800 pb-16 transform-style-preserve-3d z-40">
+                <div class="flex justify-between items-end mb-8">
+                    <div>
+                        <div class="font-retro text-[10px] text-[#ff2e93] tracking-widest mb-2">CATALOGUE // CATEGORY 03</div>
+                        <h2 class="font-retro text-xl md:text-2xl text-white">HUMAN PORTRAITS</h2>
+                    </div>
+                    <span class="font-retro text-[8px] text-zinc-500 border border-zinc-800 px-2.5 py-1">ISO 400 - 1600</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 transform-style-preserve-3d">
+                    <div class="group bg-zinc-950 border border-zinc-800 p-4 transition-all duration-300 hover:border-[#ff2e93] hover:-translate-y-2 hover:shadow-[0_15px_30px_rgba(0,0,0,0.5)] transform-style-preserve-3d">
+                        <div class="overflow-hidden aspect-[4/3] bg-zinc-900 mb-4">
+                            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=600" 
+                                 class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" alt="Shadow studio portrait">
+                        </div>
+                        <div class="flex justify-between font-retro text-[8px] text-zinc-500">
+                            <span>PLATE.PR_01</span>
+                            <span>STUDIO PROFILE 9</span>
+                        </div>
+                    </div>
+                    <div class="group bg-zinc-950 border border-zinc-800 p-4 transition-all duration-300 hover:border-[#ff2e93] hover:-translate-y-2 hover:shadow-[0_15px_30px_rgba(0,0,0,0.5)] transform-style-preserve-3d">
+                        <div class="overflow-hidden aspect-[4/3] bg-zinc-900 mb-4">
+                            <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=600" 
+                                 class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" alt="Ambient portrait lighting">
+                        </div>
+                        <div class="flex justify-between font-retro text-[8px] text-zinc-500">
+                            <span>PLATE.PR_02</span>
+                            <span>OUTDOOR PROFILE</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- ================= SECTION 4: SHADOW STUDIES ================= -->
+            <!-- Stagger position: top: 2600px, left: 2600px -->
+            <section class="absolute top-[2600px] left-[2600px] max-w-[500px] w-full border-b border-zinc-800 pb-16 transform-style-preserve-3d z-50">
+                <div class="flex justify-between items-end mb-8">
+                    <div>
+                        <div class="font-retro text-[10px] text-[#ffde43] tracking-widest mb-2">CATALOGUE // CATEGORY 04</div>
+                        <h2 class="font-retro text-xl md:text-2xl text-white">SHADOW STUDIES</h2>
+                    </div>
+                    <span class="font-retro text-[8px] text-zinc-500 border border-zinc-800 px-2.5 py-1">ISO 100 - 400</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 transform-style-preserve-3d">
+                    <div class="group bg-zinc-950 border border-zinc-800 p-4 transition-all duration-300 hover:border-[#ffde43] hover:-translate-y-2 hover:shadow-[0_15px_30px_rgba(0,0,0,0.5)] transform-style-preserve-3d">
+                        <div class="overflow-hidden aspect-[4/3] bg-zinc-900 mb-4">
+                            <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=600" 
+                                 class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" alt="Shadow forms">
+                        </div>
+                        <div class="flex justify-between font-retro text-[8px] text-zinc-500">
+                            <span>PLATE.SH_01</span>
+                            <span>SHADOW PATTERNS</span>
+                        </div>
+                    </div>
+                    <div class="group bg-zinc-950 border border-zinc-800 p-4 transition-all duration-300 hover:border-[#ffde43] hover:-translate-y-2 hover:shadow-[0_15px_30px_rgba(0,0,0,0.5)] transform-style-preserve-3d">
+                        <div class="overflow-hidden aspect-[4/3] bg-zinc-900 mb-4">
+                            <img src="https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=600" 
+                                 class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" alt="Monolith shadows">
+                        </div>
+                        <div class="flex justify-between font-retro text-[8px] text-zinc-500">
+                            <span>PLATE.SH_02</span>
+                            <span>MONOLITH SHADOWS</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- ================= SECTION 5: NIGHT GRIDS ================= -->
+            <!-- Stagger position: top: 3250px, left: 3250px -->
+            <section class="absolute top-[3250px] left-[3250px] max-w-[500px] w-full border-b border-zinc-800 pb-16 transform-style-preserve-3d z-60">
+                <div class="flex justify-between items-end mb-8">
+                    <div>
+                        <div class="font-retro text-[10px] text-[#00e5ff] tracking-widest mb-2">CATALOGUE // CATEGORY 05</div>
+                        <h2 class="font-retro text-xl md:text-2xl text-white">NIGHT GRIDS</h2>
+                    </div>
+                    <span class="font-retro text-[8px] text-zinc-500 border border-zinc-800 px-2.5 py-1">ISO 1600 - 3200</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 transform-style-preserve-3d">
+                    <div class="group bg-zinc-950 border border-zinc-800 p-4 transition-all duration-300 hover:border-[#00e5ff] hover:-translate-y-2 hover:shadow-[0_15px_30px_rgba(0,0,0,0.5)] transform-style-preserve-3d">
+                        <div class="overflow-hidden aspect-[4/3] bg-zinc-900 mb-4">
+                            <img src="https://images.unsplash.com/photo-1506461883276-594a12b11db3?auto=format&fit=crop&q=80&w=600" 
+                                 class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" alt="Night street light">
+                        </div>
+                        <div class="flex justify-between font-retro text-[8px] text-zinc-500">
+                            <span>PLATE.NT_01</span>
+                            <span>NIGHT STREET LIGHTS</span>
+                        </div>
+                    </div>
+                    <div class="group bg-zinc-950 border border-zinc-800 p-4 transition-all duration-300 hover:border-[#00e5ff] hover:-translate-y-2 hover:shadow-[0_15px_30px_rgba(0,0,0,0.5)] transform-style-preserve-3d">
+                        <div class="overflow-hidden aspect-[4/3] bg-zinc-900 mb-4">
+                            <img src="https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&q=80&w=600" 
+                                 class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" alt="Long exposures">
+                        </div>
+                        <div class="flex justify-between font-retro text-[8px] text-zinc-500">
+                            <span>PLATE.NT_02</span>
+                            <span>LIGHT TRAILS</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- ================= SECTION 6: CONNECT SOCIAL GATEWAY ================= -->
+            <!-- Stagger position: top: 3900px, left: 3900px -->
+            <section id="connect-section" class="absolute top-[3900px] left-[3900px] max-w-[500px] w-full pb-24 transform-style-preserve-3d z-70">
+                <div class="font-retro text-[10px] text-[#ff2e93] tracking-widest mb-8">SYS.06 // ESTABLISH GATEWAY</div>
+                
+                <div class="bg-zinc-950/60 border border-zinc-800 p-6 md:p-8 space-y-6">
+                    <div>
+                        <h2 class="font-retro text-xl md:text-2xl font-bold mb-4">INITIATE <br/><span class="text-[#ffde43]">CONNECTION</span></h2>
+                        <p class="font-sans text-zinc-400 text-xs md:text-sm leading-relaxed mb-4">
+                            Accepting assignments, catalog features, and consultancy bookings in Chandigarh and across India.
+                        </p>
+                        <div class="font-retro text-[9px] text-zinc-500">
+                            COORD: 30.7333° N, 76.7794° E
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-4">
+                        <a href="https://wa.me/919876543210" target="_blank" class="cursor-trigger flex items-center justify-between bg-[#111] hover:bg-[#25D366] hover:text-black border border-zinc-800 hover:border-black p-4 transition-all duration-300 font-retro text-[10px] uppercase tracking-wider group">
+                            <span>WHATSAPP GATEWAY</span>
+                            <span class="text-zinc-600 group-hover:text-black">➔</span>
+                        </a>
+                        <a href="https://instagram.com" target="_blank" class="cursor-trigger flex items-center justify-between bg-[#111] hover:bg-[#E1306C] hover:text-black border border-zinc-800 hover:border-black p-4 transition-all duration-300 font-retro text-[10px] uppercase tracking-wider group">
+                            <span>INSTAGRAM SECURE</span>
+                            <span class="text-zinc-600 group-hover:text-black">➔</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Diagonal Footer -->
+                <footer class="mt-16 pt-6 border-t border-zinc-900 flex flex-col md:flex-row justify-between items-center text-[8px] font-retro text-zinc-600 gap-4">
+                    <span>© 2026 YUVRAJ RANA. CAPTURED LOCALLY.</span>
+                    <span>想いをカタチに。カタチに遊びを。</span>
+                </footer>
+            </section>
+
+        </div>
+    </div>
+
+
+    <!-- ================= SYSTEM ENGINE SCRIPTING ================= -->
+    <script>
+        const cursor = document.getElementById('cursor-element');
+        const wrapper = document.getElementById('isometric-wrapper');
+        const scrollSpacer = document.getElementById('scroll-spacer');
+
+        // Reticle custom cursor movement
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+        });
+
+        // Trigger scale transformations for links
+        function applyCursorTriggers() {
+            const triggers = document.querySelectorAll('.cursor-trigger, a, button');
+            triggers.forEach(el => {
+                el.addEventListener('mouseenter', () => document.body.classList.add('hovering-link'));
+                el.addEventListener('mouseleave', () => document.body.classList.remove('hovering-link'));
+            });
+        }
+        applyCursorTriggers();
+
+
+        // ================= SCROLL MATRIX COORDINATION =================
+        // Dynamically maps scroll values directly to double translations across the X and Y axes
+        function updateScrollTransform() {
+            const scrollY = window.scrollY;
+            const isMobile = window.innerWidth < 768;
+            
+            // Auto-fitting scale factors
+            let scaleVal = isMobile ? 0.52 : 0.82;
+            if (window.innerWidth < 1200 && !isMobile) {
+                scaleVal = 0.72;
+            }
+            if (window.innerWidth < 1000 && !isMobile) {
+                scaleVal = 0.62;
+            }
+
+            const rotateXVal = isMobile ? 42 : 54;
+            const rotateZVal = isMobile ? 30 : 45; // Clockwise Z rotation matching reference screen slope
+            
+            // Performs exact diagonal sliding coordinate translation
+            wrapper.style.transform = `rotateX(${rotateXVal}deg) rotateZ(${rotateZVal}deg) translateX(-${scrollY}px) translateY(-${scrollY}px) scale(${scaleVal})`;
+            
+            // Run scrollSpy monitoring
+            runScrollSpy(scrollY);
+        }
+
+        function resizeLayout() {
+            // Dynamic spacer height bound perfectly mapped to the updated 650px stagger intervals
+            scrollSpacer.style.height = `${6 * 650 + window.innerHeight * 0.9}px`;
+            updateScrollTransform();
+        }
+
+        // Native viewport hooks
+        window.addEventListener('scroll', updateScrollTransform);
+        window.addEventListener('resize', () => {
+            resizeLayout();
+            updateScrollTransform();
+        });
+
+
+        // ================= INTERACTIVE SCROLL NAVIGATION =================
+        // Slides native viewport smoothly to staggered index targets
+        function scrollToSection(index) {
+            const targetY = index * 650;
+            
+            window.scrollTo({
+                top: targetY,
+                behavior: 'smooth'
+            });
+        }
+
+        // SCROLLSPY INTERFACE MONITOR
+        const markersMap = {
+            0: 'marker-0',
+            1: 'marker-1',
+            2: 'marker-2',
+            3: 'marker-3',
+            4: 'marker-4',
+            5: 'marker-5',
+            6: 'marker-6'
+        };
+
+        function runScrollSpy(currentScroll) {
+            let activeIndex = Math.round(currentScroll / 650);
+            if (activeIndex < 0) activeIndex = 0;
+            if (activeIndex > 6) activeIndex = 6;
+
+            // Refresh indicator statuses
+            for (let i = 0; i <= 6; i++) {
+                const m = document.getElementById(markersMap[i]);
+                const link = m.parentElement;
+                if (i === activeIndex) {
+                    m.classList.remove('opacity-0');
+                    link.classList.remove('text-zinc-500');
+                    link.classList.add('text-white');
+                } else {
+                    m.classList.add('opacity-0');
+                    link.classList.add('text-zinc-500');
+                    link.classList.remove('text-white');
+                }
+            }
+        }
+
+
+        // ================= PRELOADER ENGINE SEQUENCE =================
+        const logLines = [
+            "&gt; PACKING COMPACT DIAGONAL MATRIX CODES...",
+            "&gt; COMPRESSING STAGGER SPACES (GAP: 650PX)... DONE",
+            "&gt; CALIBRATING MULTI-TRACK WALKING RETRO SPRITES...",
+            "&gt; UNBLOCKING USER SCROLL INTERACTION PLATFORMS...",
+            "&gt; INJECTING PROCEDURAL SYNCHRONIZED CHIPTUNE...",
+            "&gt; DETECTING INSTAGRAM / WHATSAPP GATEWAYS... DETECTED",
+            "&gt; SYSTEMS CALIBRATED. WAITING FOR OPERATOR ACTION."
+        ];
+        
+        const terminalLog = document.getElementById('terminal-log');
+        const loaderProgress = document.getElementById('loader-progress');
+        const loaderPercent = document.getElementById('loader-percent');
+        const bootButton = document.getElementById('boot-button');
+        
+        let progress = 0;
+        let logIndex = 0;
+
+        const loadInterval = setInterval(() => {
+            if (progress < 100) {
+                progress += Math.floor(Math.random() * 8) + 4;
+                if (progress > 100) progress = 100;
+                
+                loaderProgress.style.width = `${progress}%`;
+                loaderPercent.innerText = `${progress.toString().padStart(2, '0')}%`;
+                
+                if (progress % 14 === 0 || progress % 15 === 0) {
+                    if (logIndex < logLines.length) {
+                        const div = document.createElement('div');
+                        div.innerHTML = logLines[logIndex];
+                        terminalLog.appendChild(div);
+                        terminalLog.scrollTop = terminalLog.scrollHeight;
+                        logIndex++;
+                    }
+                }
+            } else {
+                clearInterval(loadInterval);
+                bootButton.classList.remove('hidden');
+            }
+        }, 100);
+
+        // Web Audio API Synthesizer parameters
+        let audioCtx = null;
+        let isPlaying = false;
+        let synthInterval = null;
+        const melodyChords = [
+            [261.63, 329.63, 392.00], // C Maj
+            [349.23, 440.00, 523.25], // F Maj
+            [293.66, 349.23, 440.00], // D Min
+            [392.00, 493.88, 587.33]  // G Maj
+        ];
+        let synthStep = 0;
+
+        function startSystem() {
+            document.body.classList.add('system-booted');
+            cursor.style.opacity = '1';
+
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            playRetroChime();
+
+            resizeLayout();
+
+            const loader = document.getElementById('loader-screen');
+            loader.style.transition = "transform 0.8s cubic-bezier(0.77, 0, 0.175, 1)";
+            loader.style.transform = "translateY(-100%)";
+            setTimeout(() => {
+                loader.classList.add('hidden');
+            }, 800);
+        }
+
+        // Procedural chime synthesiser
+        function playRetroChime() {
+            if (!audioCtx) return;
+            const notes = [523.25, 659.25, 783.99, 1046.50];
+            notes.forEach((freq, idx) => {
+                setTimeout(() => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 1.2);
+                }, idx * 100);
+            });
+        }
+
+        // Ambient loop player
+        function toggleBGM() {
+            const btn = document.getElementById('sound-indicator');
+            const pixel = document.getElementById('sound-pixel');
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            if (isPlaying) {
+                isPlaying = false;
+                btn.firstElementChild.innerText = "OFF";
+                btn.classList.add('text-zinc-400');
+                btn.classList.remove('text-[#ffde43]');
+                pixel.className = "w-2.5 h-2.5 bg-zinc-700 rounded-sm";
+                clearInterval(synthInterval);
+            } else {
+                isPlaying = true;
+                btn.firstElementChild.innerText = "ON";
+                btn.classList.remove('text-zinc-400');
+                btn.classList.add('text-[#ffde43]');
+                pixel.className = "w-2.5 h-2.5 bg-[#ffde43] rounded-sm animate-pulse";
+                audioCtx.resume();
+                
+                synthInterval = setInterval(() => {
+                    let chord = melodyChords[synthStep % melodyChords.length];
+                    chord.forEach((freq) => {
+                        let osc = audioCtx.createOscillator();
+                        let gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                        gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.8);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start();
+                        osc.stop(audioCtx.currentTime + 2.0);
+                    });
+
+                    setTimeout(() => {
+                        let note = chord[Math.floor(Math.random() * chord.length)] * 2;
+                        let osc = audioCtx.createOscillator();
+                        let gain = audioCtx.createGain();
+                        osc.type = 'square';
+                        osc.frequency.setValueAtTime(note, audioCtx.currentTime);
+                        gain.gain.setValueAtTime(0.012, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start();
+                        osc.stop(audioCtx.currentTime + 0.4);
+                    }, 400);
+
+                    synthStep++;
+                }, 1600);
+            }
+        }
+    </script>
+</body>
+</html>
